@@ -6,38 +6,39 @@ const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
 const chaiAsPromised = require('chai-as-promised');
 const proxyquire = require('proxyquire');
-const _clone = require('lodash/clone');
+const loClone = require('lodash/clone');
+
 const testMySQL = {};
 proxyquire('../../src/adapter', {
-  mysql: testMySQL
+  mysql: testMySQL,
 });
 const Model = require('../extras/model');
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
 
-let should = chai.should();
+const should = chai.should();
 
 describe('AbstractModelInstance - MySQL', () => {
   describe('constructor', () => {
     it('should leave properties as empty object if nothing is provided', () => {
-      let model = new Model();
+      const model = new Model();
       model.properties.should.be.eql({});
     });
 
     it('should set properties that matches field names', () => {
-      let model = new Model({'a': 1, 'b': 2, 'c': 3});
-      model.properties.should.be.eql({'a': 1, 'b': 2});
+      const model = new Model({ a: 1, b: 2, c: 3 });
+      model.properties.should.be.eql({ a: 1, b: 2 });
     });
 
     it('should set nested properties (json-path) correctly', () => {
-      let model = new Model({'a': 1, 'b.c': 2});
-      model.properties.should.be.deep.eql({'a': 1, 'b': {'c': 2}});
+      const model = new Model({ a: 1, 'b.c': 2 });
+      model.properties.should.be.deep.eql({ a: 1, b: { c: 2 } });
     });
 
     it('should set nested properties (json-object) correctly', () => {
-      let model = new Model({'a': 1, 'b': {'c': 2}});
-      model.properties.should.be.deep.eql({'a': 1, 'b': {'c': 2}});
+      const model = new Model({ a: 1, b: { c: 2 } });
+      model.properties.should.be.deep.eql({ a: 1, b: { c: 2 } });
     });
   });
 
@@ -69,12 +70,12 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it("should not set original if object type doesn't match", () => {
-      model.setOriginal({'a': 1});
+      model.setOriginal({ a: 1 });
       model.original.should.be.eql({});
     });
 
     it("should not set original if object type doesn't match", () => {
-      let obj = new Model({'a': 1});
+      const obj = new Model({ a: 1 });
       model.setOriginal(obj);
       model.original.should.be.eql(obj);
     });
@@ -108,7 +109,7 @@ describe('AbstractModelInstance - MySQL', () => {
     let model = null;
 
     beforeEach(() => {
-      model = new Model({'a': 10});
+      model = new Model({ a: 10 });
     });
 
     it('should return undefined for invalid field name', () => {
@@ -128,15 +129,15 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it('should remove valid field', () => {
-      model = new Model({'a': 10, 'b': 20});
+      model = new Model({ a: 10, b: 20 });
       model.remove('a');
-      model.properties.should.be.eql({'b': 20});
+      model.properties.should.be.eql({ b: 20 });
     });
 
     it('should return undefined for invalid field name', () => {
-      model = new Model({'a': 10});
+      model = new Model({ a: 10 });
       model.remove('c');
-      model.properties.should.be.eql({'a': 10});
+      model.properties.should.be.eql({ a: 10 });
     });
 
     it('should return undefined if property is not set', () => {
@@ -148,7 +149,8 @@ describe('AbstractModelInstance - MySQL', () => {
   });
 
   describe('rawQuery', () => {
-    let mysql, stub;
+    let mysql; let
+      stub;
     mysql = null;
 
     beforeEach(() => {
@@ -158,9 +160,7 @@ describe('AbstractModelInstance - MySQL', () => {
       stub.withArgs('SELECT * from `table2`', []).yields(new Error('invalid query'));
 
       Model.CONN = {
-        'openConnection': () => {
-          return Promise.resolve({'query': stub});
-        }
+        openConnection: () => Promise.resolve({ query: stub }),
       };
     });
 
@@ -174,14 +174,15 @@ describe('AbstractModelInstance - MySQL', () => {
   });
 
   describe('DELETE', () => {
-    let mysql, stub, sampleCondition;
+    let mysql;
+    let stub;
     mysql = null;
-    sampleCondition = {'id': 123, 'a': 1, 'b': '2'};
+    const sampleCondition = { id: 123, a: 1, b: '2' };
 
     beforeEach(() => {
       mysql = new Model(sampleCondition);
       stub = sinon.stub(mysql, 'rawQuery');
-      stub.withArgs('DELETE FROM `table1` WHERE `id` = ?', [123]).returns(Promise.resolve({affectedRows: 1}));
+      stub.withArgs('DELETE FROM `table1` WHERE `id` = ?', [123]).returns(Promise.resolve({ affectedRows: 1 }));
       stub.withArgs('DELETE FROM `table2` WHERE `id` = ?', [123]).rejects(new Error('mysql delete error'));
     });
 
@@ -206,15 +207,16 @@ describe('AbstractModelInstance - MySQL', () => {
   });
 
   describe('SELECT', () => {
-    let mysql, stub, sampleCondition, sampleSelect1, sampleSelect2, sampleOrderby1, sampleOrderby2, output, expectation;
+    let mysql;
+    let stub;
     mysql = null;
-    sampleCondition = {'a': 1, 'b': '2'};
-    sampleSelect1 = ['a', 'b'];
-    sampleSelect2 = 'a';
-    sampleOrderby1 = ['a', 'b'];
-    sampleOrderby2 = 'a';
-    output = [{'a': 1, 'b': '1'}, {'a': 1, 'b': '2'}];
-    expectation = [new Model(output[0]), new Model(output[1])];
+    const sampleCondition = { a: 1, b: '2' };
+    const sampleSelect1 = ['a', 'b'];
+    const sampleSelect2 = 'a';
+    const sampleOrderby1 = ['a', 'b'];
+    const sampleOrderby2 = 'a';
+    const output = [{ a: 1, b: '1' }, { a: 1, b: '2' }];
+    const expectation = [new Model(output[0]), new Model(output[1])];
 
     beforeEach(() => {
       mysql = new Model({});
@@ -271,21 +273,22 @@ describe('AbstractModelInstance - MySQL', () => {
   });
 
   describe('INSERT', () => {
-    let mysql, stub;
+    let mysql;
+    let stub;
     mysql = null;
 
     beforeEach(() => {
       mysql = new Model({});
       stub = sinon.stub(mysql, 'rawQuery');
-      stub.withArgs('INSERT INTO `table` SET ?', {a: 1, b: 2}).returns(Promise.resolve({insertId: 1}));
-      stub.withArgs('INSERT INTO `table2` SET ?', {a: 1, b: 2}).throws(new Error('mysql insert error'));
+      stub.withArgs('INSERT INTO `table` SET ?', { a: 1, b: 2 }).returns(Promise.resolve({ insertId: 1 }));
+      stub.withArgs('INSERT INTO `table2` SET ?', { a: 1, b: 2 }).throws(new Error('mysql insert error'));
     });
 
     it('rawQuery responds success', (done) => {
       Model.TABLE = 'table';
       mysql.set('a', 1);
       mysql.set('b', 2);
-      mysql.INSERT().then(res => {
+      mysql.INSERT().then((res) => {
         res.should.be.eql(1);
         stub.should.have.callCount(1);
         done();
@@ -296,7 +299,7 @@ describe('AbstractModelInstance - MySQL', () => {
       Model.TABLE = 'table2';
       mysql.set('a', 1);
       mysql.set('b', 2);
-      mysql.INSERT().catch(err => {
+      mysql.INSERT().catch((err) => {
         err.message.should.be.eql('mysql insert error');
         stub.should.have.callCount(1);
         done();
@@ -310,24 +313,25 @@ describe('AbstractModelInstance - MySQL', () => {
   });
 
   describe('UPDATE', () => {
-    let mysql, stub, sampleCondition;
+    let mysql;
+    let stub;
     mysql = null;
-    sampleCondition = {'a': 1, 'b': '2'};
+    const sampleCondition = { a: 1, b: '2' };
 
     beforeEach(() => {
       mysql = new Model(sampleCondition);
       stub = sinon.stub(mysql, 'rawQuery');
-      stub.withArgs('UPDATE `table1` SET `a` = ? WHERE `id` = ?', [2, '111']).returns(Promise.resolve({changedRows: 5}));
-      stub.withArgs('UPDATE `table2` SET `a` = ? WHERE `id` = ?', [3, '222']).returns(Promise.resolve({changedRows: 0}));
+      stub.withArgs('UPDATE `table1` SET `a` = ? WHERE `id` = ?', [2, '111']).returns(Promise.resolve({ changedRows: 5 }));
+      stub.withArgs('UPDATE `table2` SET `a` = ? WHERE `id` = ?', [3, '222']).returns(Promise.resolve({ changedRows: 0 }));
       stub.withArgs('UPDATE `table3` SET `a` = ? WHERE `id` = ?', [3, '222']).rejects(new Error('mysql update error'));
     });
 
     it('rawQuery responds success', (done) => {
       Model.TABLE = 'table1';
-      let original = new Model({'id': '111', 'a': 1, 'b': '2'});
+      const original = new Model({ id: '111', a: 1, b: '2' });
       mysql.setOriginal(original);
       mysql.set('a', 2);
-      mysql.UPDATE().then(res => {
+      mysql.UPDATE().then((res) => {
         res.should.be.eql(true);
         stub.should.have.callCount(1);
         done();
@@ -336,10 +340,10 @@ describe('AbstractModelInstance - MySQL', () => {
 
     it('rawQuery responds success, with no changes to database', (done) => {
       Model.TABLE = 'table2';
-      let original = new Model({'id': '222', 'a': 1, 'b': '2'});
+      const original = new Model({ id: '222', a: 1, b: '2' });
       mysql.setOriginal(original);
       mysql.set('a', 3);
-      mysql.UPDATE().then(res => {
+      mysql.UPDATE().then((res) => {
         res.should.be.eql(false);
         stub.should.have.callCount(1);
         done();
@@ -348,10 +352,10 @@ describe('AbstractModelInstance - MySQL', () => {
 
     it('rawQuery throws exception', (done) => {
       Model.TABLE = 'table3';
-      let original = new Model({'id': '222', 'a': 1, 'b': '2'});
+      const original = new Model({ id: '222', a: 1, b: '2' });
       mysql.setOriginal(original);
       mysql.set('a', 3);
-      mysql.UPDATE().catch(err => {
+      mysql.UPDATE().catch((err) => {
         err.message.should.be.eql('mysql update error');
         stub.should.have.callCount(1);
         done();
@@ -360,7 +364,7 @@ describe('AbstractModelInstance - MySQL', () => {
 
     it("update throws exception (bad conditions) - because original don't have id", (done) => {
       Model.TABLE = 'table3';
-      let original = new Model({'a': 1, 'b': '2'});
+      const original = new Model({ a: 1, b: '2' });
       mysql.setOriginal(original);
       mysql.UPDATE().should.be.rejectedWith(Error, 'bad conditions').notify(done);
       stub.should.have.callCount(0);
@@ -368,7 +372,7 @@ describe('AbstractModelInstance - MySQL', () => {
 
     it("update throws exception 'invalid request (no changes)'", (done) => {
       Model.TABLE = 'table3';
-      let original = new Model({'id': 1, 'a': 1, 'b': '2'});
+      const original = new Model({ id: 1, a: 1, b: '2' });
       mysql.setOriginal(original);
       mysql.UPDATE().should.be.rejectedWith(Error, 'invalid request (no changes)').notify(done);
       stub.should.have.callCount(0);
@@ -379,9 +383,9 @@ describe('AbstractModelInstance - MySQL', () => {
     let model = null;
 
     it('should not make any difference if there is no property that needs serialisation', (done) => {
-      let props = {
-        'a': 10,
-        'b': 20
+      const props = {
+        a: 10,
+        b: 20,
       };
       model = new Model(props);
       model.serialise().then(() => {
@@ -391,9 +395,9 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it('should not modify serialised property', (done) => {
-      let props = {
-        'a': 10,
-        'jsonfield': JSON.stringify({'prop': 'b'})
+      const props = {
+        a: 10,
+        jsonfield: JSON.stringify({ prop: 'b' }),
       };
       model = new Model(props);
       model.serialise().then(() => {
@@ -403,14 +407,13 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it('should convert property from JSON object to string', (done) => {
-      let props, expectation;
-      props = {
-        'a': 10,
-        'jsonfield': {
-          'prop': 'b'
-        }
+      const props = {
+        a: 10,
+        jsonfield: {
+          prop: 'b',
+        },
       };
-      expectation = _clone(props);
+      const expectation = loClone(props);
       expectation.jsonfield = JSON.stringify(expectation.jsonfield);
       model = new Model(props);
       model.serialise().then(() => {
@@ -424,9 +427,9 @@ describe('AbstractModelInstance - MySQL', () => {
     let model = null;
 
     it('should not make any difference if there is no property that needs deserialisation', (done) => {
-      let props = {
-        'a': 10,
-        'b': 20
+      const props = {
+        a: 10,
+        b: 20,
       };
       model = new Model(props);
       model.deserialise().then(() => {
@@ -436,9 +439,9 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it('should not modify JSON object', (done) => {
-      let props = {
-        'a': 10,
-        'jsonfield': {'prop': 'b'}
+      const props = {
+        a: 10,
+        jsonfield: { prop: 'b' },
       };
       model = new Model(props);
       model.deserialise().then(() => {
@@ -448,14 +451,13 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it('should convert property from string to JSON object', (done) => {
-      let expectation, props;
-      expectation = {
-        'a': 10,
-        'jsonfield': {
-          'prop': 'b'
-        }
+      const expectation = {
+        a: 10,
+        jsonfield: {
+          prop: 'b',
+        },
       };
-      props = _clone(expectation);
+      const props = loClone(expectation);
       props.jsonfield = JSON.stringify(props.jsonfield);
       model = new Model(props);
       model.deserialise().then(() => {
@@ -466,9 +468,10 @@ describe('AbstractModelInstance - MySQL', () => {
   });
 
   describe('FINDLINKS', () => {
-    let mysql, stub, output;
+    let mysql;
+    let stub;
     mysql = null;
-    output = [{'user_id': 3}, {'user_id': 4}];
+    const output = [{ user_id: 3 }, { user_id: 4 }];
 
     beforeEach(() => {
       mysql = new Model({});
@@ -478,12 +481,12 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it('should return raw results', (done) => {
-      mysql.FINDLINKS('user_role', {'role_id': 1}, 'user_id').should.eventually.deep.equal(output).notify(done);
+      mysql.FINDLINKS('user_role', { role_id: 1 }, 'user_id').should.eventually.deep.equal(output).notify(done);
       stub.should.have.callCount(1);
     });
 
     it('should forward error thrown by rawQuery', (done) => {
-      mysql.FINDLINKS('user_role', {'user_id': 1}, 'role_id').catch(e => {
+      mysql.FINDLINKS('user_role', { user_id: 1 }, 'role_id').catch((e) => {
         e.message.should.be.eql('mysql findlinks error');
         stub.should.have.callCount(1);
         done();

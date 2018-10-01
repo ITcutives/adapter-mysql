@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign,default-case */
 /**
  * Created by itcutives on 1/10/2015.
  */
@@ -5,14 +6,8 @@ const Boom = require('boom');
 const _ = require('lodash');
 const mysql = require('mysql');
 
-const reflect = (promise) => {
-  return promise.then(function(v) {
-    return {v: v, status: 'resolved'};
-  },
-  function(e) {
-    return {e: e, status: 'rejected'};
-  });
-};
+const reflect = promise => promise.then(v => ({ v, status: 'resolved' }),
+  e => ({ e, status: 'rejected' }));
 
 const Link = require('./link');
 const AbstractAdapter = require('./abstract');
@@ -64,9 +59,8 @@ class Adapter extends AbstractAdapter {
     super();
     if (entity) {
       _.forEach(entity, (v, k) => {
-        let cols, field;
-        cols = k.split('.');
-        field = cols[0];
+        const cols = k.split('.');
+        const field = cols[0];
         if (this.constructor.FIELDS.indexOf(field) !== -1) {
           _.set(this.properties, k, v);
         }
@@ -75,13 +69,13 @@ class Adapter extends AbstractAdapter {
   }
 
   toLink(fields, ModelPath) {
-    let links, link, promises, object;
-    links = this.constructor.LINKS;
-    promises = [];
-    object = this.properties;
+    let link;
+    const links = this.constructor.LINKS;
+    const promises = [];
+    const object = this.properties;
 
     object.links = {};
-    links.forEach(l => {
+    links.forEach((l) => {
       if (fields && fields.indexOf(l.PLURAL) === -1) {
         return;
       }
@@ -89,35 +83,34 @@ class Adapter extends AbstractAdapter {
       promises.push(link.toLink(object, ModelPath));
     });
     if (promises.length > 0) {
-      return Promise.all(promises.map(reflect)).then(results => {
+      return Promise.all(promises.map(reflect)).then((results) => {
         results = results.filter(x => x.status === 'resolved').map(x => x.v);
         return Object.assign.apply({}, results);
       });
-    } else {
-      return Promise.resolve(this.properties);
     }
+    return Promise.resolve(this.properties);
   }
 
   static fromLink(Cls, object) {
-    let links, link, promises, o;
-    links = Cls.LINKS;
-    promises = [];
-    o = new Adapter();
+    let link;
 
-    links.forEach(function(l) {
+    const links = Cls.LINKS;
+    const promises = [];
+    const o = new Adapter();
+
+    links.forEach((l) => {
       link = new Link(o, l);
       promises.push(link.fromLink(object));
     });
 
     if (promises.length > 0) {
-      return Promise.all(promises.map(reflect)).then(function(results) {
+      return Promise.all(promises.map(reflect)).then((results) => {
         results = results.filter(x => x.status === 'resolved').map(x => x.v);
-        let result = Object.assign.apply({}, results);
+        const result = Object.assign.apply({}, results);
         return new Cls(result);
       });
-    } else {
-      return Promise.resolve(new Cls(object));
     }
+    return Promise.resolve(new Cls(object));
   }
 
   serialise() {
@@ -159,9 +152,8 @@ class Adapter extends AbstractAdapter {
    */
 
   static jsonFieldNotation(col) {
-    let cols, field;
-    cols = col.split('.');
-    field = cols.shift();
+    const cols = col.split('.');
+    const field = cols.shift();
     if (cols.length > 0) {
       return `${mysql.escapeId(field)}->>"$.${cols.join('.')}"`;
     }
@@ -169,7 +161,7 @@ class Adapter extends AbstractAdapter {
   }
 
   static fixFieldName(col) {
-    let field = Adapter.jsonFieldNotation(col);
+    const field = Adapter.jsonFieldNotation(col);
     if (field.indexOf('->>') !== -1) {
       return `${field} as \`${col}\``;
     }
@@ -182,19 +174,17 @@ class Adapter extends AbstractAdapter {
    * @returns {*}
    */
   static getSelectFields(select) {
-    let columnRename = function(col) {
+    const columnRename = (col) => {
       if (col.indexOf(' as ') !== -1) {
-        let parts = _.split(col, ' as ');
-        return mysql.escapeId(parts[0]) + ' as ' + mysql.escapeId(parts[1]);
+        const parts = _.split(col, ' as ');
+        return `${mysql.escapeId(parts[0])} as ${mysql.escapeId(parts[1])}`;
       }
       return Adapter.fixFieldName(col);
     };
 
     // check fields
     if (_.isArray(select) && !_.isEmpty(select)) {
-      let newList = _.map(select, fld => {
-        return columnRename(fld);
-      });
+      const newList = _.map(select, fld => columnRename(fld));
       select = newList.join(', ');
     } else if (_.isEmpty(select) || select === '*') {
       // default value
@@ -217,31 +207,28 @@ class Adapter extends AbstractAdapter {
 
     // order
     if (Array.isArray(order) === true) {
-      let orderBy = order.map(v => {
+      const orderBy = order.map((v) => {
         if (v.indexOf('-') === 0) {
-          return mysql.escapeId(v.substr(1)) + ' DESC';
-        } else {
-          return mysql.escapeId(v) + ' ASC';
+          return `${mysql.escapeId(v.substr(1))} DESC`;
         }
+        return `${mysql.escapeId(v)} ASC`;
       });
       order = orderBy.join(', ');
     } else if (typeof order === 'object') {
-      let orderBy = _.map(order, (value, key) => {
+      const orderBy = _.map(order, (value, key) => {
         if (_.isNumber(key)) {
           return mysql.escapeId(value);
-        } else {
-          if (!_.isEmpty(value)) {
-            return mysql.escapeId(key) + ' ' + value;
-          } else {
-            return mysql.escapeId(key);
-          }
         }
+        if (!_.isEmpty(value)) {
+          return `${mysql.escapeId(key)} ${value}`;
+        }
+        return mysql.escapeId(key);
       });
       order = orderBy.join(', ');
     } else {
       order = mysql.escapeId(order);
     }
-    order = ' ORDER BY ' + order;
+    order = ` ORDER BY ${order}`;
 
     return order;
   }
@@ -259,7 +246,7 @@ class Adapter extends AbstractAdapter {
     if (!limit) {
       limit = Adapter.PAGESIZE;
     }
-    return ' LIMIT ' + from + ', ' + limit;
+    return ` LIMIT ${from}, ${limit}`;
   }
 
   /**
@@ -269,17 +256,17 @@ class Adapter extends AbstractAdapter {
    * @returns {{keys: Array, values: Array}}
    */
   static filterValues(fields, values) {
-    let result = {
+    const result = {
       keys: [],
-      values: []
+      values: [],
     };
     _.forEach(values, (v, k) => {
       if (fields.indexOf(k) !== -1) {
         if (typeof v === 'function') {
-          k = mysql.escapeId(k) + ' = ' + v();
+          k = `${mysql.escapeId(k)} = ${v()}`;
           result.keys.push(k);
         } else {
-          result.keys.push(mysql.escapeId(k) + ' = ?');
+          result.keys.push(`${mysql.escapeId(k)} = ?`);
           result.values.push(v);
         }
       }
@@ -293,17 +280,25 @@ class Adapter extends AbstractAdapter {
    * @returns {{where: string, args: Array}}
    */
   conditionBuilder(conditions) {
-    let where, args, opr, condition, placeHolder, addToArgs, temp, isFirst, sampleCondition, operators;
+    let where;
+    let args;
+    let opr;
+    let condition;
+    let placeHolder;
+    let addToArgs;
+    let temp;
+    let isFirst;
+
     where = '';
     args = [];
     isFirst = true;
-    sampleCondition = {
-      'field': '',
-      'operator': '=',
-      'value': '',
-      'condition': 'AND'
+    const sampleCondition = {
+      field: '',
+      operator: '=',
+      value: '',
+      condition: 'AND',
     };
-    operators = ['=', '<', '>', '<=', '>=', '<>', '!=', 'like', 'not like', 'between', 'ilike', 'regexp', 'in', 'not in'];
+    const operators = ['=', '<', '>', '<=', '>=', '<>', '!=', 'like', 'not like', 'between', 'ilike', 'regexp', 'in', 'not in'];
 
     _.forEach(conditions, (cond, key) => {
       addToArgs = true;
@@ -324,27 +319,30 @@ class Adapter extends AbstractAdapter {
       // condition
       condition = 'AND';
       if (cond.condition && !_.isEmpty(cond.condition)) {
+        // eslint-disable-next-line prefer-destructuring
         condition = cond.condition;
       }
 
       // special operators
       switch (opr) {
         case 'NOT IN':
-          // falls through
+        // falls through
         case 'IN':
           if (_.isArray(cond.value)) {
             addToArgs = true;
           } else if (cond.value.condition) {
-            let table, Cls;
+            let table;
+            let
+              Cls;
             if (cond.value.class) {
               Cls = cond.value.class;
-              let tmpCls = new Cls();
+              const tmpCls = new Cls();
               table = tmpCls.getTableName();
             } else if (cond.value.table) {
               table = mysql.escapeId(cond.value.table);
             }
             temp = this.query(table, cond.value.condition, cond.value.select);
-            cond.value = '(' + temp.query + ')';
+            cond.value = `(${temp.query})`;
             args = args.concat(temp.args);
             addToArgs = false;
           } else {
@@ -352,11 +350,11 @@ class Adapter extends AbstractAdapter {
           }
           break;
         case 'LIKE':
-          cond.value = "'" + cond.value + "'";
+          cond.value = `'${cond.value}'`;
           addToArgs = false;
           break;
         case '=':
-          // falls through
+        // falls through
         case '!=':
           if (cond.value === null) {
             switch (opr) {
@@ -381,17 +379,15 @@ class Adapter extends AbstractAdapter {
         addToArgs = false;
         placeHolder = cond.value();
       } else if (_.isArray(cond.value)) {
-        placeHolder = '(' + _.map(cond.value, function() {
-          return '?';
-        }).join(', ') + ')';
+        placeHolder = `(${_.map(cond.value, () => '?').join(', ')})`;
       }
 
       if (isFirst === false) {
-        where += ' ' + condition + ' ';
+        where += ` ${condition} `;
       }
 
       // query
-      where += Adapter.jsonFieldNotation(cond.field) + ' ' + opr + ' ' + placeHolder;
+      where += `${Adapter.jsonFieldNotation(cond.field)} ${opr} ${placeHolder}`;
 
       if (addToArgs) {
         if (_.isArray(cond.value)) {
@@ -405,9 +401,9 @@ class Adapter extends AbstractAdapter {
     });
     // attach WHERE
     if (where !== '') {
-      where = ' WHERE ' + where;
+      where = ` WHERE ${where}`;
     }
-    return {'where': where, 'args': args};
+    return { where, args };
   }
 
   /**
@@ -421,14 +417,14 @@ class Adapter extends AbstractAdapter {
    * @returns {{}}
    */
   query(table, condition, select, order, from, limit) {
-    let sql = {};
+    const sql = {};
 
     condition = this.conditionBuilder(condition);
     select = this.constructor.getSelectFields(select);
     order = this.constructor.getOrderByFields(order);
     limit = this.constructor.getLimit(from, limit);
 
-    sql.query = 'SELECT ' + select + ' FROM ' + table + condition.where + order + limit;
+    sql.query = `SELECT ${select} FROM ${table}${condition.where}${order}${limit}`;
     sql.args = condition.args;
 
     return sql;
@@ -439,7 +435,7 @@ class Adapter extends AbstractAdapter {
    * @returns {string}
    */
   getTableName() {
-    let list = [];
+    const list = [];
     if (!_.isEmpty(this.constructor.DATABASE)) {
       list.push(mysql.escapeId(this.constructor.DATABASE));
     }
@@ -453,19 +449,18 @@ class Adapter extends AbstractAdapter {
    * @param args
    * @returns {Promise.<TResult>}
    */
+  // eslint-disable-next-line class-methods-use-this
   rawQuery(sql, args) {
-    return Adapter.CONN.openConnection().then(connection => {
-      return new Promise((resolve, reject) => {
-        Adapter.debug(sql, args);
-        connection.query(sql, args, (err, result) => {
-          if (err) {
-            // todo: send some generic message instead of what mysql returns
-            return reject(new Error(err.toString()));
-          }
-          resolve(result);
-        });
+    return Adapter.CONN.openConnection().then(connection => new Promise((resolve, reject) => {
+      Adapter.debug(sql, args);
+      connection.query(sql, args, (err, result) => {
+        if (err) {
+          // todo: send some generic message instead of what mysql returns
+          return reject(new Error(err.toString()));
+        }
+        return resolve(result);
       });
-    });
+    }));
   }
 
   /**
@@ -478,19 +473,16 @@ class Adapter extends AbstractAdapter {
    * @returns {*|promise}
    */
   SELECT(condition, select, order, from, limit) {
-    let sql,
-      table;
     condition = condition || [];
     select = select || '*';
     order = order || [];
     limit = limit || this.constructor.PAGESIZE;
 
-    table = this.getTableName();
-    sql = this.query(table, condition, select, order, from, limit);
-    return this.rawQuery(sql.query, sql.args).then(result => {
-      let Cls, promises;
-      Cls = this.constructor;
-      promises = result.map(v => new Cls(v)).map(v => v.deserialise());
+    const table = this.getTableName();
+    const sql = this.query(table, condition, select, order, from, limit);
+    return this.rawQuery(sql.query, sql.args).then((result) => {
+      const Cls = this.constructor;
+      const promises = result.map(v => new Cls(v)).map(v => v.deserialise());
       return Promise.all(promises);
     });
   }
@@ -500,17 +492,17 @@ class Adapter extends AbstractAdapter {
    * @returns {*|promise}
    */
   INSERT() {
-    let table,
-      sql;
+    let table;
+    let sql;
 
     if (_.isEmpty(this.properties)) {
       return Promise.reject(new Error('invalid request (empty values)'));
     }
 
-    return this.serialise().then(o => {
+    return this.serialise().then((o) => {
       table = this.getTableName();
 
-      sql = 'INSERT INTO ' + table + ' SET ?';
+      sql = `INSERT INTO ${table} SET ?`;
       Adapter.debug(sql, o.properties);
       return this.rawQuery(sql, o.properties).then(result => result.insertId);
     });
@@ -521,21 +513,21 @@ class Adapter extends AbstractAdapter {
    * @returns {*|promise}
    */
   UPDATE() {
-    let changes,
-      condition,
-      filteredValues,
-      setValues,
-      correctValues,
-      table,
-      sql;
+    let changes;
+    let condition;
+    let filteredValues;
+    let setValues;
+    let correctValues;
+    let table;
+    let sql;
 
     if (_.isEmpty(this.original) || !this.original.get('id')) {
       return Promise.reject(Boom.badRequest('bad conditions'));
     }
 
-    return this.serialise().then(o => {
+    return this.serialise().then((o) => {
       condition = {
-        'id': this.original.get('id')
+        id: this.original.get('id'),
       };
       changes = o.getChanges();
 
@@ -550,7 +542,7 @@ class Adapter extends AbstractAdapter {
       correctValues = filteredValues.values.concat(condition.args);
 
       table = this.getTableName();
-      sql = 'UPDATE ' + table + ' SET ' + setValues + condition.where;
+      sql = `UPDATE ${table} SET ${setValues}${condition.where}`;
 
       Adapter.debug(sql, correctValues);
       return this.rawQuery(sql, correctValues).then(result => result.changedRows > 0);
@@ -562,22 +554,20 @@ class Adapter extends AbstractAdapter {
    * @returns {*|promise}
    */
   DELETE() {
-    let table,
-      sql,
-      condition;
+    let condition;
 
     if (!this.get('id')) {
       return Promise.reject(new Error('invalid request (no condition)'));
     }
 
     condition = {
-      'id': this.get('id')
+      id: this.get('id'),
     };
 
     condition = this.conditionBuilder(condition);
-    table = this.getTableName();
+    const table = this.getTableName();
 
-    sql = 'DELETE FROM ' + table + condition.where;
+    const sql = `DELETE FROM ${table}${condition.where}`;
     Adapter.debug(sql, condition.args);
     return this.rawQuery(sql, condition.args).then(result => result.affectedRows > 0);
   }
@@ -594,7 +584,7 @@ class Adapter extends AbstractAdapter {
     conditions = this.conditionBuilder(conditions);
     fields = this.constructor.getSelectFields(fields);
 
-    let query = 'SELECT ' + fields + ' FROM ' + entity + conditions.where;
+    const query = `SELECT ${fields} FROM ${entity}${conditions.where}`;
     Adapter.debug(query, conditions.args);
     return this.rawQuery(query, conditions.args);
   }

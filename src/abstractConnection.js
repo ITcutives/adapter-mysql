@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this */
 /**
  * Created by ashish on 28/4/17.
  */

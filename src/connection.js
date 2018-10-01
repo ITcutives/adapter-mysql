@@ -4,13 +4,18 @@
 const mysql = require('mysql');
 const AbstractConnection = require('./abstractConnection');
 
-class MySQL extends AbstractConnection {
+class Connection extends AbstractConnection {
+  static get TYPE() {
+    return 'MYSQL';
+  }
+
   openConnection() {
     if (!this.connection) {
       let connectionType = 'Connection';
       if (this.config.connectionLimit) {
         connectionType = 'Pool';
       }
+      // eslint-disable-next-line no-console
       console.log(`creating ${connectionType}`);
       this.connection = mysql[`create${connectionType}`](this.config);
     }
@@ -18,11 +23,11 @@ class MySQL extends AbstractConnection {
   }
 
   closeConnection() {
-    let conn = this.connection;
+    const conn = this.connection;
     if (!conn) {
       return Promise.resolve();
     }
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       conn.end(() => {
         this.connection = undefined;
         resolve();
@@ -31,4 +36,4 @@ class MySQL extends AbstractConnection {
   }
 }
 
-module.exports = MySQL;
+module.exports = Connection;

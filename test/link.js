@@ -17,28 +17,23 @@ chai.should();
 describe('link', () => {
   describe('constructor', () => {
     it('should assign all the properties provided in links attribute', () => {
-      let prop, link;
-      prop = {
-        'PLURAL': 'organisations',
-        'LINK': 'organisation_id',
-        'TYPE': '1TO1',
-        'CANMODIFY': false
+      const prop = {
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
       };
-      link = new Link(db, prop);
+      const link = new Link(db, prop);
       link.db.should.be.eql(db);
       link.plural.should.be.eql(prop.PLURAL);
     });
   });
 
   describe('toLink', () => {
-    let link,
-      stubToMTOM,
-      stubTo1TOM,
-      stubTo1TO1;
-
-    stubToMTOM = sinon.stub(Link.prototype, 'toMTOM');
-    stubTo1TOM = sinon.stub(Link.prototype, 'to1TOM');
-    stubTo1TO1 = sinon.stub(Link.prototype, 'to1TO1');
+    let link;
+    const stubToMTOM = sinon.stub(Link.prototype, 'toMTOM');
+    const stubTo1TOM = sinon.stub(Link.prototype, 'to1TOM');
+    const stubTo1TO1 = sinon.stub(Link.prototype, 'to1TO1');
     stubToMTOM.returns(Promise.resolve());
     stubTo1TOM.returns(Promise.resolve());
     stubTo1TO1.returns(Promise.resolve());
@@ -49,12 +44,12 @@ describe('link', () => {
 
     it("should call toMTOM when link type is 'MTOM'", (done) => {
       link = new Link(db, {
-        'PLURAL': 'organisations',
-        'LINK': 'organisation_id',
-        'CHILD': 'gateway_id',
-        'JOIN': 'credit',
-        'TYPE': 'MTOM',
-        'CANMODIFY': true
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        CHILD: 'gateway_id',
+        JOIN: 'credit',
+        TYPE: 'MTOM',
+        CANMODIFY: true,
       });
       link.toLink().then(() => {
         stubToMTOM.should.have.callCount(1);
@@ -64,10 +59,10 @@ describe('link', () => {
 
     it("should call to1TOM when link type is '1TOM'", (done) => {
       link = new Link(db, {
-        'PLURAL': 'webservices',
-        'LINK': 'organisation_id',
-        'TYPE': '1TOM',
-        'CANMODIFY': false
+        PLURAL: 'webservices',
+        LINK: 'organisation_id',
+        TYPE: '1TOM',
+        CANMODIFY: false,
       });
       link.toLink().then(() => {
         stubTo1TOM.should.have.callCount(1);
@@ -77,10 +72,10 @@ describe('link', () => {
 
     it("should call to1TO1 when link type is '1TO1'", (done) => {
       link = new Link(db, {
-        'PLURAL': 'organisations',
-        'LINK': 'organisation_id',
-        'TYPE': '1TO1',
-        'CANMODIFY': false
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
       });
       link.toLink().then(() => {
         stubTo1TO1.should.have.callCount(1);
@@ -90,10 +85,10 @@ describe('link', () => {
   });
 
   describe('fromLink', () => {
-    let link;
+    // let link;
 
     beforeEach(() => {
-      console.log(link);
+      // console.log(link);
     });
 
     it('', (done) => {
@@ -110,10 +105,10 @@ describe('link', () => {
   });
 
   describe('toMTOM', () => {
-    let link;
+    // let link;
 
     beforeEach(() => {
-      console.log(link);
+      // console.log(link);
     });
 
     it('', (done) => {
@@ -130,10 +125,10 @@ describe('link', () => {
   });
 
   describe('to1TOM', () => {
-    let link;
+    // let link;
 
     beforeEach(() => {
-      console.log(link);
+      // console.log(link);
     });
 
     it('', (done) => {
@@ -150,10 +145,10 @@ describe('link', () => {
   });
 
   describe('to1TO1', () => {
-    let link;
+    // let link;
 
     beforeEach(() => {
-      console.log(link);
+      // console.log(link);
     });
 
     it('', (done) => {
@@ -170,10 +165,10 @@ describe('link', () => {
   });
 
   describe('from1TO1', () => {
-    let link;
+    // let link;
 
     beforeEach(() => {
-      console.log(link);
+      // console.log(link);
     });
 
     it('', (done) => {

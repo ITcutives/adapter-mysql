@@ -2,6 +2,7 @@
  * Created by ashish on 17/5/17.
  */
 const Adapter = require('../../src/adapter');
+
 let table = '';
 let database = '';
 let links = [];
@@ -28,7 +29,7 @@ module.exports = class Model extends Adapter {
    */
   static get SERIALIZED() {
     return {
-      'jsonfield': 'json'
+      jsonfield: 'json',
     };
   }
 

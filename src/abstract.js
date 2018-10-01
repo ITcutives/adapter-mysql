@@ -1,7 +1,9 @@
+/* eslint-disable no-unused-vars,class-methods-use-this */
 /**
  * Created by ashish on 27/4/17.
  */
 const Boom = require('boom');
+
 let connection;
 
 class AbstractAdapter {
@@ -9,7 +11,7 @@ class AbstractAdapter {
     this.properties = {};
     this.original = {};
     if (entity) {
-      this.constructor.FIELDS.forEach(field => {
+      this.constructor.FIELDS.forEach((field) => {
         if (entity[field]) {
           this.properties[field] = entity[field];
         }
@@ -33,6 +35,7 @@ class AbstractAdapter {
    */
   static debug(sql, args) {
     if (process.env.debug === 'true') {
+      // eslint-disable-next-line no-console
       console.log(sql, args);
     }
   }
@@ -61,10 +64,9 @@ class AbstractAdapter {
   }
 
   getChanges() {
-    let changes;
-    changes = {};
-    this.constructor.FIELDS.forEach(field => {
-      let currentValue = this.get(field);
+    const changes = {};
+    this.constructor.FIELDS.forEach((field) => {
+      const currentValue = this.get(field);
       if (currentValue && currentValue !== this.original.get(field)) {
         changes[field] = currentValue;
       }

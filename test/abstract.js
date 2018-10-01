@@ -18,18 +18,18 @@ Abstract.FIELDS = ['id', 'a', 'b', 'jsonfield'];
 describe('abstract', () => {
   describe('constructor', () => {
     it('should set properties that matches field names', () => {
-      let model = new Abstract({'a': 1, 'b': 2, 'c': 3});
-      model.properties.should.be.eql({'a': 1, 'b': 2});
+      const model = new Abstract({ a: 1, b: 2, c: 3 });
+      model.properties.should.be.eql({ a: 1, b: 2 });
     });
 
     it('should set nested properties (json-path) correctly', () => {
-      let model = new Abstract({'a': 1, 'b.c': 2});
-      model.properties.should.be.deep.eql({'a': 1});
+      const model = new Abstract({ a: 1, 'b.c': 2 });
+      model.properties.should.be.deep.eql({ a: 1 });
     });
 
     it('should set nested properties (json-object) correctly', () => {
-      let model = new Abstract({'a': 1, 'b': {'c': 2}});
-      model.properties.should.be.deep.eql({'a': 1, 'b': {'c': 2}});
+      const model = new Abstract({ a: 1, b: { c: 2 } });
+      model.properties.should.be.deep.eql({ a: 1, b: { c: 2 } });
     });
   });
 
@@ -41,6 +41,7 @@ describe('abstract', () => {
     });
 
     afterEach(() => {
+      // eslint-disable-next-line no-console
       console.log.restore();
     });
 
@@ -70,7 +71,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.query();
       }).should.throw('[adapter] `query` method not implemented');
     });
@@ -84,7 +85,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.getTableName();
       }).should.throw('[adapter] `getTableName` method not implemented');
     });
@@ -98,7 +99,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.SELECT();
       }).should.throw('[adapter] `SELECT` method not implemented');
     });
@@ -112,7 +113,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.INSERT();
       }).should.throw('[adapter] `INSERT` method not implemented');
     });
@@ -126,7 +127,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.UPDATE();
       }).should.throw('[adapter] `UPDATE` method not implemented');
     });
@@ -140,7 +141,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.DELETE();
       }).should.throw('[adapter] `DELETE` method not implemented');
     });
@@ -154,7 +155,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.FINDLINKS();
       }).should.throw('[adapter] `FINDLINKS` method not implemented');
     });
@@ -168,7 +169,7 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.DELETELINK();
       }).should.throw('[adapter] `DELETELINK` method not implemented');
     });
@@ -182,9 +183,16 @@ describe('abstract', () => {
     });
 
     it('should throw exception', () => {
-      (function() {
+      (() => {
         a.SAVELINK();
       }).should.throw('[adapter] `SAVELINK` method not implemented');
     });
   });
 });
+//
+// {"$and":[{"status":"active"},{"$and":[{"subscription.freeCredits.EMAIL":true},{"subscription.freeCredits.SMS":true}]}]}
+// {"$and":[{"status":"active"},{"$and":[{"subscription.freeCredits.EMAIL":true},{"plan_id":{"$in": ["2","3"]}}]}]}
+//
+//
+// {"status":"active","subscription.freeCredits.EMAIL":true,"subscription.freeCredits.SMS":true}
+// {"status":"active","subscription.freeCredits.EMAIL":true,"plan_id":{"$in": ["2","3"]}}
