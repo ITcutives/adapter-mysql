@@ -2,7 +2,7 @@
  * Created by ashish on 28/4/17.
  */
 const mysql = require('mysql');
-const AbstractConnection = require('./abstractConnection');
+const AbstractConnection = require('@itcutives/adapter-memory/src/abstractConnection');
 
 class Connection extends AbstractConnection {
   static get TYPE() {

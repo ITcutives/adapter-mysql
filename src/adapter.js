@@ -5,12 +5,13 @@
 const Boom = require('boom');
 const _ = require('lodash');
 const mysql = require('mysql');
+const AbstractAdapter = require('@itcutives/adapter-memory/src/abstract');
 
 const reflect = promise => promise.then(v => ({ v, status: 'resolved' }),
   e => ({ e, status: 'rejected' }));
 
 const Link = require('./link');
-const AbstractAdapter = require('./abstract');
+
 
 class Adapter extends AbstractAdapter {
   /**
@@ -332,8 +333,7 @@ class Adapter extends AbstractAdapter {
             addToArgs = true;
           } else if (cond.value.condition) {
             let table;
-            let
-              Cls;
+            let Cls;
             if (cond.value.class) {
               Cls = cond.value.class;
               const tmpCls = new Cls();
