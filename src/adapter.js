@@ -4,6 +4,7 @@
  */
 const Boom = require('boom');
 const _ = require('lodash');
+const loClone = require('lodash/clone');
 const mysql = require('mysql');
 const AbstractAdapter = require('@itcutives/adapter-memory/src/abstract');
 
@@ -217,9 +218,6 @@ class Adapter extends AbstractAdapter {
       order = orderBy.join(', ');
     } else if (typeof order === 'object') {
       const orderBy = _.map(order, (value, key) => {
-        if (_.isNumber(key)) {
-          return mysql.escapeId(value);
-        }
         if (!_.isEmpty(value)) {
           return `${mysql.escapeId(key)} ${value}`;
         }
@@ -332,7 +330,7 @@ class Adapter extends AbstractAdapter {
           if (_.isArray(cond.value)) {
             addToArgs = true;
           } else if (cond.value.condition) {
-            let table;
+            let table = this.getTableName();
             let Cls;
             if (cond.value.class) {
               Cls = cond.value.class;
@@ -472,7 +470,7 @@ class Adapter extends AbstractAdapter {
    * @param limit
    * @returns {*|promise}
    */
-  SELECT(condition, select, order, from, limit) {
+  async SELECT(condition, select, order, from, limit) {
     condition = condition || [];
     select = select || '*';
     order = order || [];
@@ -480,10 +478,12 @@ class Adapter extends AbstractAdapter {
 
     const table = this.getTableName();
     const sql = this.query(table, condition, select, order, from, limit);
-    return this.rawQuery(sql.query, sql.args).then((result) => {
-      const Cls = this.constructor;
-      const promises = result.map(v => new Cls(v)).map(v => v.deserialise());
-      return Promise.all(promises);
+    const result = await this.rawQuery(sql.query, sql.args);
+    const Cls = this.constructor;
+    const deserialised = await Promise.all(result.map(v => new Cls(v)).map(v => v.deserialise()));
+    return deserialised.map((v) => {
+      v.setOriginal(new Cls(loClone(v.properties)));
+      return v;
     });
   }
 
@@ -491,69 +491,59 @@ class Adapter extends AbstractAdapter {
    *
    * @returns {*|promise}
    */
-  INSERT() {
-    let table;
-    let sql;
-
+  async INSERT() {
     if (_.isEmpty(this.properties)) {
       return Promise.reject(new Error('invalid request (empty values)'));
     }
 
-    return this.serialise().then((o) => {
-      table = this.getTableName();
-
-      sql = `INSERT INTO ${table} SET ?`;
-      Adapter.debug(sql, o.properties);
-      return this.rawQuery(sql, o.properties).then(result => result.insertId);
-    });
+    await this.serialise();
+    const table = this.getTableName();
+    const sql = `INSERT INTO ${table} SET ?`;
+    Adapter.debug(sql, this.properties);
+    return this.rawQuery(sql, this.properties).then(result => result.insertId);
   }
 
   /**
    *
    * @returns {*|promise}
    */
-  UPDATE() {
-    let changes;
+  async UPDATE() {
     let condition;
-    let filteredValues;
-    let setValues;
-    let correctValues;
-    let table;
-    let sql;
 
     if (_.isEmpty(this.original) || !this.original.get('id')) {
       return Promise.reject(Boom.badRequest('bad conditions'));
     }
 
-    return this.serialise().then((o) => {
-      condition = {
-        id: this.original.get('id'),
-      };
-      changes = o.getChanges();
+    await this.serialise();
 
-      if (_.isEmpty(changes)) {
-        return Promise.reject(new Error('invalid request (no changes)'));
-      }
 
-      condition = this.conditionBuilder(condition);
-      filteredValues = this.constructor.filterValues(this.constructor.FIELDS, changes);
+    condition = {
+      id: this.original.get('id'),
+    };
+    const changes = this.getChanges();
 
-      setValues = filteredValues.keys.join(',');
-      correctValues = filteredValues.values.concat(condition.args);
+    if (_.isEmpty(changes)) {
+      return Promise.reject(new Error('invalid request (no changes)'));
+    }
 
-      table = this.getTableName();
-      sql = `UPDATE ${table} SET ${setValues}${condition.where}`;
+    condition = this.conditionBuilder(condition);
+    const filteredValues = this.constructor.filterValues(this.constructor.FIELDS, changes);
 
-      Adapter.debug(sql, correctValues);
-      return this.rawQuery(sql, correctValues).then(result => result.changedRows > 0);
-    });
+    const setValues = filteredValues.keys.join(',');
+    const correctValues = filteredValues.values.concat(condition.args);
+
+    const table = this.getTableName();
+    const sql = `UPDATE ${table} SET ${setValues}${condition.where}`;
+
+    Adapter.debug(sql, correctValues);
+    return this.rawQuery(sql, correctValues).then(result => result.changedRows > 0);
   }
 
   /**
    *
    * @returns {*|promise}
    */
-  DELETE() {
+  async DELETE() {
     let condition;
 
     if (!this.get('id')) {

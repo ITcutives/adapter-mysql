@@ -308,6 +308,15 @@ describe('mysql', () => {
           args: ['abc'],
         },
       },
+      {
+        input: {
+          a: () => '"fieldValue"',
+        },
+        output: {
+          where: ' WHERE `a` = "fieldValue"',
+          args: [],
+        },
+      },
     ];
 
     beforeEach(() => {

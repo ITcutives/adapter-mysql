@@ -121,6 +121,57 @@ describe('AbstractModelInstance - MySQL', () => {
     });
   });
 
+  describe('conditionBuilder', () => {
+    let mysql;
+    const conditions = [
+      {
+        input: [{
+          field: 'id',
+          operator: 'in',
+          value: {
+            class: require('../extras/related'),
+            select: 'a_id',
+            condition: { a_id: 'abc' },
+          },
+        }],
+        output: {
+          where: ' WHERE `id` IN (SELECT `a_id` FROM `related` WHERE `a_id` = ?)',
+          args: ['abc'],
+        },
+      },
+      {
+        input: [{
+          field: 'id',
+          operator: 'in',
+          value: {
+            select: 'a_id',
+            condition: { a_id: 'abc' },
+          },
+        }],
+        output: {
+          where: ' WHERE `id` IN (SELECT `a_id` FROM `table1` WHERE `a_id` = ?)',
+          args: ['abc'],
+        },
+      },
+    ];
+
+    beforeEach(() => {
+      Model.TABLE = 'table1';
+      mysql = new Model({});
+    });
+
+    afterEach(() => {
+      Model.TABLE = undefined;
+    });
+
+    conditions.forEach((condition) => {
+      it(`should build - ${condition.output.where}`, (done) => {
+        mysql.conditionBuilder(condition.input).should.be.deep.equal(condition.output);
+        done();
+      });
+    });
+  });
+
   describe('remove', () => {
     let model = null;
 
@@ -149,7 +200,8 @@ describe('AbstractModelInstance - MySQL', () => {
   });
 
   describe('rawQuery', () => {
-    let mysql; let
+    let mysql;
+    let
       stub;
     mysql = null;
 
@@ -216,7 +268,13 @@ describe('AbstractModelInstance - MySQL', () => {
     const sampleOrderby1 = ['a', 'b'];
     const sampleOrderby2 = 'a';
     const output = [{ a: 1, b: '1' }, { a: 1, b: '2' }];
-    const expectation = [new Model(output[0]), new Model(output[1])];
+
+    const expectation = [
+      new Model(output[0]),
+      new Model(output[1]),
+    ];
+    expectation[0].setOriginal(new Model(output[0]));
+    expectation[1].setOriginal(new Model(output[1]));
 
     beforeEach(() => {
       mysql = new Model({});

@@ -20,8 +20,9 @@ class Link {
    * }
    * @param db
    * @param link
+   * @param relationships
    */
-  constructor(db, link) {
+  constructor(db, link, relationships = {}) {
     this.db = db;
 
     this.type = link.TYPE;
@@ -30,9 +31,10 @@ class Link {
     this.canModify = link.CANMODIFY || false;
     this.child = link.CHILD;
     this.join = link.JOIN;
+    this.relationships = relationships;
   }
 
-  toLink(object, ModelPath) {
+  async toLink(object, ModelPath) {
     // eslint-disable-next-line default-case
     switch (this.type) {
       case 'MTOM':
@@ -44,52 +46,50 @@ class Link {
       case '1TO1':
         return this.to1TO1(object);
     }
-    return Promise.resolve(object);
+    return object;
   }
 
-  fromLink(object) {
+  async fromLink(object) {
     // eslint-disable-next-line default-case
     switch (this.type) {
       case '1TO1':
         return this.from1TO1(object);
     }
-    return Promise.resolve(object);
+    return object;
   }
 
-  toMTOM(object) {
-    // with join table
-    const condition = {};
-    condition[this.child] = object.id;
-
-    return this.db.FINDLINKS(this.join, condition, this.link).then((rec) => {
-      const ids = [];
-      rec.forEach((v) => {
-        ids.push(v[this.link]);
-      });
-      object.links[this.plural] = ids;
+  async toMTOM(object) {
+    if (this.relationships[this.join]) {
+      object.links[this.plural] = this.relationships[this.join];
       return object;
-    });
+    }
+    // with join table
+    const condition = {
+      [this.child]: object.id,
+    };
+    const rec = await this.db.FINDLINKS(this.join, condition, this.link);
+    object.links[this.plural] = rec.map(v => v[this.link]);
+    return object;
   }
 
-  to1TOM(object, ModelPath) {
+  async to1TOM(object, ModelPath) {
     // m2o
-    const condition = {};
-
-    condition[this.link] = object.id;
-
+    const condition = {
+      [this.link]: object.id,
+    };
     const Cls = require(`${ModelPath}/models/${this.plural}`);
     const o = new Cls();
-    return o.SELECT(condition, 'id').then((rec) => {
-      const ids = [];
-      rec.forEach((v) => {
-        ids.push(v.get('id'));
-      });
-      object.links[this.plural] = ids;
+
+    if (this.relationships[o.getTableName()]) {
+      object.links[this.plural] = this.relationships[o.getTableName()];
       return object;
-    });
+    }
+    const rec = await o.SELECT(condition, 'id');
+    object.links[this.plural] = rec.map(v => v.get('id'));
+    return object;
   }
 
-  to1TO1(object) {
+  async to1TO1(object) {
     // this would be in record, so its okay to convert it
     let id;
     if (object[this.link]) {
@@ -102,12 +102,12 @@ class Link {
       object.links[this.plural] = id;
       delete object[this.link];
     }
-    return Promise.resolve(object);
+    return object;
   }
 
-  from1TO1(object) {
+  async from1TO1(object) {
     object[this.link] = object.links[this.plural];
-    return Promise.resolve(object);
+    return object;
   }
 }
 

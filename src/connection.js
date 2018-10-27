@@ -9,7 +9,7 @@ class Connection extends AbstractConnection {
     return 'MYSQL';
   }
 
-  openConnection() {
+  async openConnection() {
     if (!this.connection) {
       let connectionType = 'Connection';
       if (this.config.connectionLimit) {
@@ -19,18 +19,18 @@ class Connection extends AbstractConnection {
       console.log(`creating ${connectionType}`);
       this.connection = mysql[`create${connectionType}`](this.config);
     }
-    return Promise.resolve(this.connection);
+    return this.connection;
   }
 
-  closeConnection() {
+  async closeConnection() {
     const conn = this.connection;
     if (!conn) {
-      return Promise.resolve();
+      return true;
     }
     return new Promise((resolve) => {
       conn.end(() => {
         this.connection = undefined;
-        resolve();
+        resolve(true);
       });
     });
   }
