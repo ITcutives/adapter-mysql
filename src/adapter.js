@@ -448,8 +448,9 @@ class Adapter extends AbstractAdapter {
    * @returns {Promise.<TResult>}
    */
   // eslint-disable-next-line class-methods-use-this
-  rawQuery(sql, args) {
-    return Adapter.CONN.openConnection().then(connection => new Promise((resolve, reject) => {
+  async rawQuery(sql, args) {
+    const connection = await Adapter.CONN.openConnection();
+    return new Promise((resolve, reject) => {
       Adapter.debug(sql, args);
       connection.query(sql, args, (err, result) => {
         if (err) {
@@ -458,7 +459,7 @@ class Adapter extends AbstractAdapter {
         }
         return resolve(result);
       });
-    }));
+    });
   }
 
   /**

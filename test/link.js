@@ -1,6 +1,7 @@
 /**
  * Created by ashish on 20/5/17.
  */
+const path = require('path');
 const chai = require('chai');
 const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
@@ -15,6 +16,12 @@ chai.use(chaiAsPromised);
 chai.should();
 
 describe('link', () => {
+  describe('ALLOWED_LINKS', () => {
+    it('should return static array value', () => {
+      Link.ALLOWED_LINKS.should.be.deep.eql(['MTOM', '1TOM', '1TO1']);
+    });
+  });
+
   describe('constructor', () => {
     it('should assign all the properties provided in links attribute', () => {
       const prop = {
@@ -31,15 +38,11 @@ describe('link', () => {
 
   describe('toLink', () => {
     let link;
-    const stubToMTOM = sinon.stub(Link.prototype, 'toMTOM');
-    const stubTo1TOM = sinon.stub(Link.prototype, 'to1TOM');
-    const stubTo1TO1 = sinon.stub(Link.prototype, 'to1TO1');
-    stubToMTOM.returns(Promise.resolve());
-    stubTo1TOM.returns(Promise.resolve());
-    stubTo1TO1.returns(Promise.resolve());
+    let stubToMTOM;
+    let stubTo1TOM;
+    let stubTo1TO1;
 
     beforeEach(() => {
-
     });
 
     it("should call toMTOM when link type is 'MTOM'", (done) => {
@@ -51,6 +54,7 @@ describe('link', () => {
         TYPE: 'MTOM',
         CANMODIFY: true,
       });
+      stubToMTOM = sinon.stub(link, 'toMTOM').returns(Promise.resolve());
       link.toLink().then(() => {
         stubToMTOM.should.have.callCount(1);
         done();
@@ -64,6 +68,7 @@ describe('link', () => {
         TYPE: '1TOM',
         CANMODIFY: false,
       });
+      stubTo1TOM = sinon.stub(link, 'to1TOM').returns(Promise.resolve());
       link.toLink().then(() => {
         stubTo1TOM.should.have.callCount(1);
         done();
@@ -77,110 +82,321 @@ describe('link', () => {
         TYPE: '1TO1',
         CANMODIFY: false,
       });
+      stubTo1TO1 = sinon.stub(link, 'to1TO1').returns(Promise.resolve());
       link.toLink().then(() => {
         stubTo1TO1.should.have.callCount(1);
+        done();
+      });
+    });
+
+    it('should return object as is when link type is unknown', (done) => {
+      link = new Link(db, {
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        CANMODIFY: false,
+      });
+      stubTo1TO1 = sinon.stub(link, 'to1TO1').returns(Promise.resolve());
+      link.toLink().then(() => {
+        stubTo1TO1.should.have.callCount(0);
         done();
       });
     });
   });
 
   describe('fromLink', () => {
-    // let link;
+    let link;
+    let object;
 
     beforeEach(() => {
-      // console.log(link);
+      object = {
+        id: 1,
+        name: 'test',
+        links: {
+          organisations: 11,
+        },
+      };
     });
 
-    it('', (done) => {
-      done();
+    it('should find and assign links if available', (done) => {
+      link = new Link(db, {
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
+      });
+      link.fromLink(object).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          organisation_id: 11,
+          links: {
+            organisations: 11,
+          },
+        });
+        done();
+      });
     });
 
-    it('', (done) => {
-      done();
-    });
-
-    it('', (done) => {
-      done();
+    it('should leave object as is if the link type is not 1TO1', (done) => {
+      link = new Link(db, {
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        TYPE: '1TOM',
+        CANMODIFY: false,
+      });
+      link.fromLink(object).then((result) => {
+        result.should.be.deep.eql(object);
+        done();
+      });
     });
   });
 
   describe('toMTOM', () => {
-    // let link;
+    let link;
+    let object;
 
     beforeEach(() => {
-      // console.log(link);
+      object = {
+        id: 1,
+        name: 'organisation',
+        links: {},
+      };
     });
 
-    it('', (done) => {
-      done();
+    it('should pick values from relationship object if value is already assigned', (done) => {
+      link = new Link(db, {
+        PLURAL: 'users',
+        LINK: 'user_id',
+        CHILD: 'organisation_id',
+        JOIN: 'permission',
+        TYPE: 'MTOM',
+        CANMODIFY: true,
+      }, {
+        permission: ['ashish', 'manish'],
+      });
+      link.toMTOM(object).then((result) => {
+        result.should.deep.eql({
+          id: 1,
+          name: 'organisation',
+          links: {
+            users: ['ashish', 'manish'],
+          },
+        });
+        done();
+      });
     });
 
-    it('', (done) => {
-      done();
-    });
-
-    it('', (done) => {
-      done();
+    it('should call findLinks with join table and query database', (done) => {
+      db.FINDLINKS = sinon.stub();
+      db.FINDLINKS.withArgs('permission', { organisation_id: 1 }, 'user_id').resolves([{ user_id: 'riddhi' }]);
+      link = new Link(db, {
+        PLURAL: 'users',
+        LINK: 'user_id',
+        CHILD: 'organisation_id',
+        JOIN: 'permission',
+        TYPE: 'MTOM',
+        CANMODIFY: true,
+      });
+      link.toMTOM(object).then((result) => {
+        result.should.deep.eql({
+          id: 1,
+          name: 'organisation',
+          links: {
+            users: ['riddhi'],
+          },
+        });
+        done();
+      });
     });
   });
 
   describe('to1TOM', () => {
-    // let link;
+    let link;
+    let object;
 
     beforeEach(() => {
-      // console.log(link);
+      object = {
+        id: 1,
+        name: 'organisation',
+        links: {},
+      };
     });
 
-    it('', (done) => {
-      done();
+    it('should return the value from relationship object if it is assigned', (done) => {
+      link = new Link(db, {
+        PLURAL: 'relatives',
+        LINK: 'organisation_id',
+        TYPE: '1TOM',
+        CANMODIFY: false,
+      }, {
+        related: [100, 200],
+      });
+      link.to1TOM(object, path.join('../test')).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'organisation',
+          links: {
+            relatives: [100, 200],
+          },
+        });
+        done();
+      }).catch(e => console.log(e));
     });
 
-    it('', (done) => {
-      done();
-    });
-
-    it('', (done) => {
-      done();
+    it('should query join table to fetch link details', (done) => {
+      link = new Link(db, {
+        PLURAL: 'relatives',
+        LINK: 'organisation_id',
+        TYPE: '1TOM',
+        CANMODIFY: false,
+      });
+      const Relative = require('./models/relatives');
+      Relative.prototype.SELECT = sinon.stub();
+      Relative.prototype.SELECT.withArgs({ organisation_id: 1 }, 'id').resolves([new Relative({ id: 100 })]);
+      link.to1TOM(object, path.join('../test')).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'organisation',
+          links: {
+            relatives: [100],
+          },
+        });
+        done();
+      });
     });
   });
 
   describe('to1TO1', () => {
-    // let link;
+    let link;
+    let object;
 
     beforeEach(() => {
-      // console.log(link);
+      object = {
+        id: 1,
+        name: 'test',
+        address_id: 'unique-id-1022',
+        organisation_id: 11,
+        plan_id: '3',
+        links: {},
+      };
     });
 
-    it('', (done) => {
-      done();
+    it('should move field value under links if found', (done) => {
+      link = new Link(db, {
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
+      });
+      link.to1TO1(object).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          plan_id: '3',
+          address_id: 'unique-id-1022',
+          links: {
+            organisations: 11,
+          },
+        });
+        done();
+      });
     });
 
-    it('', (done) => {
-      done();
+    it('should not make any changes if link field is not assigned', (done) => {
+      link = new Link(db, {
+        PLURAL: 'connections',
+        LINK: 'connection_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
+      });
+      link.to1TO1(object).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          plan_id: '3',
+          organisation_id: 11,
+          address_id: 'unique-id-1022',
+          links: {},
+        });
+        done();
+      });
     });
 
-    it('', (done) => {
-      done();
+    it('should convert the value to integer if it is a number in string format', (done) => {
+      link = new Link(db, {
+        PLURAL: 'plans',
+        LINK: 'plan_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
+      });
+      link.to1TO1(object).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          address_id: 'unique-id-1022',
+          organisation_id: 11,
+          links: {
+            plans: 3,
+          },
+        });
+        done();
+      });
+    });
+
+    it('should not convert the value to integer if it is a string', (done) => {
+      link = new Link(db, {
+        PLURAL: 'addresses',
+        LINK: 'address_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
+      });
+      link.to1TO1(object).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          organisation_id: 11,
+          plan_id: '3',
+          links: {
+            addresses: 'unique-id-1022',
+          },
+        });
+        done();
+      });
     });
   });
 
   describe('from1TO1', () => {
-    // let link;
+    let link;
+    let object;
 
     beforeEach(() => {
-      // console.log(link);
+      link = new Link(db, {
+        PLURAL: 'organisations',
+        LINK: 'organisation_id',
+        TYPE: '1TO1',
+        CANMODIFY: false,
+      });
+      object = {
+        id: 1,
+        name: 'test',
+        links: {
+          organisations: 11,
+        },
+      };
     });
 
-    it('', (done) => {
-      done();
-    });
-
-    it('', (done) => {
-      done();
-    });
-
-    it('', (done) => {
-      done();
+    it('should find and assign links if available', (done) => {
+      link.from1TO1(object).then((result) => {
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          organisation_id: 11,
+          links: {
+            organisations: 11,
+          },
+        });
+        done();
+      });
     });
   });
 });

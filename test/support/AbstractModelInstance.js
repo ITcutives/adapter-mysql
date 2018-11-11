@@ -1,6 +1,7 @@
 /**
  * Created by ashish on 17/5/17.
  */
+const path = require('path');
 const chai = require('chai');
 const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
@@ -12,7 +13,7 @@ const testMySQL = {};
 proxyquire('../../src/adapter', {
   mysql: testMySQL,
 });
-const Model = require('../extras/model');
+const Model = require('../models/model');
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
@@ -71,7 +72,7 @@ describe('AbstractModelInstance - MySQL', () => {
 
     it("should not set original if object type doesn't match", () => {
       model.setOriginal({ a: 1 });
-      model.original.should.be.eql({});
+      (model.original === undefined).should.be.eql(true);
     });
 
     it("should not set original if object type doesn't match", () => {
@@ -129,7 +130,7 @@ describe('AbstractModelInstance - MySQL', () => {
           field: 'id',
           operator: 'in',
           value: {
-            class: require('../extras/related'),
+            class: require('../models/relatives'),
             select: 'a_id',
             condition: { a_id: 'abc' },
           },
@@ -547,6 +548,153 @@ describe('AbstractModelInstance - MySQL', () => {
       mysql.FINDLINKS('user_role', { user_id: 1 }, 'role_id').catch((e) => {
         e.message.should.be.eql('mysql findlinks error');
         stub.should.have.callCount(1);
+        done();
+      });
+    });
+  });
+
+  describe('toLink', () => {
+    let mysql;
+    let Related;
+
+    beforeEach(() => {
+      mysql = new Model({
+        id: 1,
+        name: 'test',
+        plan_id: '3',
+      });
+      Model.LINKS = [
+        {
+          PLURAL: 'gateways',
+          LINK: 'gateway_id',
+          CHILD: 'organisation_id',
+          JOIN: 'credit',
+          TYPE: 'MTOM',
+          CANMODIFY: true,
+        },
+        {
+          PLURAL: 'users',
+          LINK: 'user_id',
+          CHILD: 'organisation_id',
+          JOIN: 'permission',
+          TYPE: 'MTOM',
+          CANMODIFY: true,
+        },
+        {
+          PLURAL: 'relatives',
+          LINK: 'organisation_id',
+          TYPE: '1TOM',
+          CANMODIFY: false,
+        },
+        {
+          PLURAL: 'plans',
+          LINK: 'plan_id',
+          TYPE: '1TO1',
+          CANMODIFY: false,
+        },
+      ];
+      Related = require('../models/relatives');
+      Related.prototype.SELECT = sinon.stub();
+      Related.prototype.SELECT.withArgs({ organisation_id: 1 }, 'id').resolves([new Related({ id: 300 })]);
+
+      mysql.FINDLINKS = sinon.stub();
+      mysql.FINDLINKS.withArgs('credit', { organisation_id: 1 }, 'gateway_id').rejects(new Error('BAD Table'));
+    });
+
+    afterEach(() => {
+      Model.LINKS = [];
+    });
+
+    it('should correctly process link details and handle errors when requested', (done) => {
+      mysql.toLink(['relatives', 'plans', 'gateways'], path.join(__dirname, '..')).then((result) => {
+        Related.prototype.SELECT.should.have.callCount(1);
+        mysql.FINDLINKS.should.have.callCount(1);
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          links: {
+            plans: 3,
+            relatives: [300],
+          },
+        });
+        done();
+      });
+    });
+
+    it('should not do anything if link fields argument is empty', (done) => {
+      mysql.toLink([], path.join(__dirname, '..')).then((result) => {
+        Related.prototype.SELECT.should.have.callCount(0);
+        mysql.FINDLINKS.should.have.callCount(0);
+        result.should.be.deep.eql({
+          id: 1,
+          name: 'test',
+          plan_id: '3',
+          links: {},
+        });
+        done();
+      });
+    });
+  });
+
+  describe('fromLink', () => {
+    let object;
+
+    beforeEach(() => {
+      object = {
+        id: 1,
+        name: 'test',
+        links: {
+          plans: 3,
+          relatives: [300],
+        },
+      };
+      Model.LINKS = [
+        {
+          PLURAL: 'gateways',
+          LINK: 'gateway_id',
+          CHILD: 'organisation_id',
+          JOIN: 'credit',
+          TYPE: 'MTOM',
+          CANMODIFY: true,
+        },
+        {
+          PLURAL: 'users',
+          LINK: 'user_id',
+          CHILD: 'organisation_id',
+          JOIN: 'permission',
+          TYPE: 'MTOM',
+          CANMODIFY: true,
+        },
+        {
+          PLURAL: 'relatives',
+          LINK: 'organisation_id',
+          TYPE: '1TOM',
+          CANMODIFY: false,
+        },
+        {
+          PLURAL: 'plans',
+          LINK: 'plan_id',
+          TYPE: '1TO1',
+          CANMODIFY: false,
+        },
+      ];
+    });
+
+    afterEach(() => {
+      Model.LINKS = [];
+    });
+
+    it('should create class instance with correct fields populated from links object', (done) => {
+      Model.fromLink(Model, object).then((result) => {
+        result.should.be.deep.eql(new Model({ id: 1, name: 'test', plan_id: 3 }));
+        done();
+      });
+    });
+
+    it('should just create class instance without links populated if there is no links field', (done) => {
+      Model.LINKS = [];
+      Model.fromLink(Model, object).then((result) => {
+        result.should.be.deep.eql(new Model({ id: 1, name: 'test' }));
         done();
       });
     });

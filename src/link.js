@@ -78,12 +78,11 @@ class Link {
       [this.link]: object.id,
     };
     const Cls = require(`${ModelPath}/models/${this.plural}`);
-    const o = new Cls();
-
-    if (this.relationships[o.getTableName()]) {
-      object.links[this.plural] = this.relationships[o.getTableName()];
+    if (this.relationships[Cls.TABLE]) {
+      object.links[this.plural] = this.relationships[Cls.TABLE];
       return object;
     }
+    const o = new Cls();
     const rec = await o.SELECT(condition, 'id');
     object.links[this.plural] = rec.map(v => v.get('id'));
     return object;
@@ -92,16 +91,17 @@ class Link {
   async to1TO1(object) {
     // this would be in record, so its okay to convert it
     let id;
-    if (object[this.link]) {
-      id = object[this.link];
-      // int conversion because some of them are int(11) in mysql
-      // eslint-disable-next-line no-restricted-globals
-      if (isNaN(parseInt(id, 10)) === false) {
-        id = parseInt(id, 10);
-      }
-      object.links[this.plural] = id;
-      delete object[this.link];
+    if (!object[this.link]) {
+      return object;
     }
+    id = object[this.link];
+    // int conversion because some of them are int(11) in mysql
+    // eslint-disable-next-line no-restricted-globals
+    if (isNaN(parseInt(id, 10)) === false) {
+      id = parseInt(id, 10);
+    }
+    object.links[this.plural] = id;
+    delete object[this.link];
     return object;
   }
 

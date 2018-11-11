@@ -7,7 +7,7 @@ let table = '';
 let database = '';
 let links = [];
 
-module.exports = class Model extends Adapter {
+class Model extends Adapter {
   /**
    * @return {string}
    */
@@ -60,7 +60,7 @@ module.exports = class Model extends Adapter {
    * @returns {Array}
    */
   static get FIELDS() {
-    return ['id', 'a', 'b', 'jsonfield'];
+    return ['id', 'a', 'b', 'jsonfield', 'name', 'plan_id'];
   }
 
   /**
@@ -78,4 +78,6 @@ module.exports = class Model extends Adapter {
   static get LINKS() {
     return links;
   }
-};
+}
+
+module.exports = Model;
