@@ -1,4 +1,7 @@
 # adapter-mysql
+
+[![Build Status](https://travis-ci.org/ITcutives/adapter-mysql.svg?branch=develop)](https://travis-ci.org/ITcutives/adapter-mysql)
+
 This repo contains MySQL adapter for ITcutives Serverless Framework
 
 ## Usage
