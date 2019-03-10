@@ -56,7 +56,7 @@ describe('AbstractModelInstance - MySQL', () => {
       model.getTableName().should.be.eql('`database1`.`table1`');
     });
 
-    it('should only return table is database is empty', () => {
+    it('should only return table if database is empty', () => {
       Model.DATABASE = '';
       Model.TABLE = 'table1';
       model.getTableName().should.be.eql('`table1`');
