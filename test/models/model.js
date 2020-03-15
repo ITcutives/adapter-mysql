@@ -4,26 +4,9 @@
 const Adapter = require('../../src/adapter');
 
 let table = '';
-let database = '';
 let links = [];
 
 class Model extends Adapter {
-  /**
-   * @return {string}
-   */
-  static get DATABASE() {
-    return database;
-  }
-
-  /**
-   *
-   * @param {string} d
-   * @constructor
-   */
-  static set DATABASE(d) {
-    database = d;
-  }
-
   /**
    * @returns {{}}
    */

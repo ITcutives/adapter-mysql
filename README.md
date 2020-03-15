@@ -1,4 +1,7 @@
 # adapter-mysql
+
+[![Build Status](https://travis-ci.org/ITcutives/adapter-mysql.svg?branch=develop)](https://travis-ci.org/ITcutives/adapter-mysql)
+
 This repo contains MySQL adapter for ITcutives Serverless Framework
 
 ## Usage
@@ -226,6 +229,11 @@ builds
 
 The adapter takes care of serialisation/deserialisation defined under
 
+**Supported Types**
+
+- `json`
+
+
 ```js
   /**
    * @returns {{}}
@@ -253,8 +261,7 @@ and converts to
 
 ```js
 let object = {
-  "a": "1",
-  "b": "2",
-  "c": "{\"email\":\"ashish@test.com\",\"phone\":\"0412123456\"}"
+  "name": "ashish",
+  "attributes": "{\"email\":\"ashish@test.com\",\"phone\":\"0412123456\"}"
 };
 ```

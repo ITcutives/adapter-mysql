@@ -331,9 +331,46 @@ describe('mysql', () => {
     });
   });
 
-  describe('DATABASE', () => {
-    it('should be empty string', () => {
-      Adapter.DATABASE.should.be.eql('');
+  describe('setDatabase', () => {
+    let model;
+
+    beforeEach(() => {
+      model = new Adapter({});
+    });
+
+    it('should set correct database', () => {
+      model.setDatabase('mysql_0001_db');
+      model.database.should.be.eql('mysql_0001_db');
+    });
+  });
+
+  describe('getDatabase', () => {
+    let model;
+
+    beforeEach(() => {
+      model = new Adapter({});
+    });
+
+    it('should get correct database', () => {
+      model.database = 'mysql_0001_db';
+      model.getDatabase().should.be.eql('mysql_0001_db');
+    });
+  });
+
+  describe('getDatabaseString', () => {
+    let model;
+
+    beforeEach(() => {
+      model = new Adapter({});
+    });
+
+    it('should get correct database string if database is configured', () => {
+      model.setDatabase('mysql_0001_db');
+      model.getDatabaseString().should.be.eql('`mysql_0001_db`.');
+    });
+
+    it('should get empty database string if database is not configured', () => {
+      model.getDatabaseString().should.be.eql('');
     });
   });
 
