@@ -12,57 +12,55 @@ const loMap = require('lodash/map');
 const mysql = require('mysql');
 const AbstractAdapter = require('@itcutives/adapter-memory/src/abstract');
 
-const reflect = promise => promise.then(v => ({ v, status: 'resolved' }),
-  e => ({ e, status: 'rejected' }));
+const reflect = (promise) => promise.then((v) => ({ v, status: 'resolved' }),
+  (e) => ({ e, status: 'rejected' }));
 
 const Link = require('./link');
 
 
 class Adapter extends AbstractAdapter {
   /**
-   * @return {string}
-   */
-  static get DATABASE() {
-    return '';
-  }
-
-  /**
-   * @returns {{}}
+   * @return {{}}
    */
   static get SERIALIZED() {
     return {};
   }
 
   /**
-   * @returns {string}
+   * @return {string}
    */
   static get PLURAL() {
     return '';
   }
 
   /**
-   * @returns {string}
+   * @return {string}
    */
   static get TABLE() {
     return '';
   }
 
   /**
-   * @returns {Array}
+   * @return {Array}
    */
   static get FIELDS() {
     return [];
   }
 
   /**
-   * @returns {Array}
+   * @return {Array}
    */
   static get LINKS() {
     return [];
   }
 
-  constructor(entity) {
+  constructor(entity, context) {
     super();
+    // set everything to blank
+    this.setContext(context);
+    this.setDatabase('');
+
+    // if entity object is provided
     if (entity) {
       loForEach(entity, (v, k) => {
         const cols = k.split('.');
@@ -74,49 +72,26 @@ class Adapter extends AbstractAdapter {
     }
   }
 
-  async toLink(fields, ModelPath) {
-    let link;
-    const links = this.constructor.LINKS;
-    const promises = [];
-    const object = this.properties;
-
-    object.links = {};
-    links.forEach((l) => {
-      if (fields && fields.indexOf(l.PLURAL) === -1) {
-        return;
-      }
-      link = new Link(this, l);
-      promises.push(link.toLink(object, ModelPath));
-    });
-    if (promises.length > 0) {
-      return Promise.all(promises.map(reflect)).then((results) => {
-        results = results.filter(x => x.status === 'resolved').map(x => x.v);
-        return Object.assign.apply({}, results);
-      });
-    }
-    return this.properties;
+  setContext(context) {
+    this.context = context;
   }
 
-  static fromLink(Cls, object) {
-    let link;
+  getContext() {
+    return this.context;
+  }
 
-    const links = Cls.LINKS;
-    const promises = [];
-    const o = new Adapter();
+  /**
+   * @return {string}
+   */
+  getDatabase() {
+    return this.database;
+  }
 
-    links.forEach((l) => {
-      link = new Link(o, l);
-      promises.push(link.fromLink(object));
-    });
-
-    if (promises.length > 0) {
-      return Promise.all(promises.map(reflect)).then((results) => {
-        results = results.filter(x => x.status === 'resolved').map(x => x.v);
-        const result = Object.assign.apply({}, results);
-        return new Cls(result);
-      });
-    }
-    return Promise.resolve(new Cls(object));
+  /**
+   * @return {string}
+   */
+  setDatabase(db) {
+    this.database = db;
   }
 
   async serialise() {
@@ -190,7 +165,7 @@ class Adapter extends AbstractAdapter {
 
     // check fields
     if (Array.isArray(select) && !loIsEmpty(select)) {
-      const newList = loMap(select, fld => columnRename(fld));
+      const newList = loMap(select, (fld) => columnRename(fld));
       select = newList.join(', ');
     } else if (loIsEmpty(select) || select === '*') {
       // default value
@@ -335,10 +310,10 @@ class Adapter extends AbstractAdapter {
             addToArgs = true;
           } else if (cond.value.condition) {
             let table = this.getTableName();
-            let Cls;
+            let ClassConstructor;
             if (cond.value.class) {
-              Cls = cond.value.class;
-              const tmpCls = new Cls();
+              ClassConstructor = cond.value.class;
+              const tmpCls = new ClassConstructor();
               table = tmpCls.getTableName();
             } else if (cond.value.table) {
               table = mysql.escapeId(cond.value.table);
@@ -408,6 +383,71 @@ class Adapter extends AbstractAdapter {
     return { where, args };
   }
 
+  async toLink(fields, ModelPath) {
+    let link;
+    const links = this.constructor.LINKS;
+    const promises = [];
+    const object = this.properties;
+
+    object.links = {};
+    links.forEach((l) => {
+      if (fields && fields.indexOf(l.PLURAL) === -1) {
+        return;
+      }
+      link = new Link(this, l);
+      promises.push(link.toLink(object, ModelPath));
+    });
+    if (promises.length > 0) {
+      return Promise.all(promises.map(reflect)).then((results) => {
+        results = results.filter((x) => x.status === 'resolved').map((x) => x.v);
+        return Object.assign.apply({}, results);
+      });
+    }
+    return this.properties;
+  }
+
+  static fromLink(ClassConstructor, object) {
+    let link;
+
+    const links = ClassConstructor.LINKS;
+    const promises = [];
+    const o = new Adapter();
+
+    links.forEach((l) => {
+      link = new Link(o, l);
+      promises.push(link.fromLink(object));
+    });
+
+    if (promises.length > 0) {
+      return Promise.all(promises.map(reflect)).then((results) => {
+        results = results.filter((x) => x.status === 'resolved').map((x) => x.v);
+        const result = Object.assign.apply({}, results);
+        return new ClassConstructor(result);
+      });
+    }
+    return Promise.resolve(new ClassConstructor(object));
+  }
+
+  /**
+   * @returns {string}
+   */
+  getDatabaseString() {
+    const database = this.getDatabase();
+    return database ? `\`${database}\`.` : '';
+  }
+
+  /**
+   * @returns {string}
+   */
+  getTableName() {
+    const list = [];
+    if (!loIsEmpty(this.constructor.DATABASE)) {
+      list.push(mysql.escapeId(this.constructor.DATABASE));
+    }
+    list.push(mysql.escapeId(this.constructor.TABLE));
+    return list.join('.');
+  }
+
   /**
    *
    * @param table
@@ -426,23 +466,10 @@ class Adapter extends AbstractAdapter {
     order = this.constructor.getOrderByFields(order);
     limit = this.constructor.getLimit(from, limit);
 
-    sql.query = `SELECT ${select} FROM ${table}${condition.where}${order}${limit}`;
+    sql.query = `SELECT ${select} FROM ${this.getDatabaseString()}${table}${condition.where}${order}${limit}`;
     sql.args = condition.args;
 
     return sql;
-  }
-
-  /**
-   *
-   * @returns {string}
-   */
-  getTableName() {
-    const list = [];
-    if (!loIsEmpty(this.constructor.DATABASE)) {
-      list.push(mysql.escapeId(this.constructor.DATABASE));
-    }
-    list.push(mysql.escapeId(this.constructor.TABLE));
-    return list.join('.');
   }
 
   /**
@@ -484,10 +511,10 @@ class Adapter extends AbstractAdapter {
     const table = this.getTableName();
     const sql = this.query(table, condition, select, order, from, limit);
     const result = await this.rawQuery(sql.query, sql.args);
-    const Cls = this.constructor;
-    const deserialised = await Promise.all(result.map(v => new Cls(v)).map(v => v.deserialise()));
+    const ClassConstructor = this.constructor;
+    const deserialised = await Promise.all(result.map((v) => new ClassConstructor(v)).map((v) => v.deserialise()));
     return deserialised.map((v) => {
-      v.setOriginal(new Cls(loClone(v.properties)));
+      v.setOriginal(new ClassConstructor(loClone(v.properties)));
       return v;
     });
   }
@@ -503,9 +530,9 @@ class Adapter extends AbstractAdapter {
 
     await this.serialise();
     const table = this.getTableName();
-    const sql = `INSERT INTO ${table} SET ?`;
+    const sql = `INSERT INTO ${this.getDatabaseString()}${table} SET ?`;
     Adapter.debug(sql, this.properties);
-    return this.rawQuery(sql, this.properties).then(result => result.insertId);
+    return this.rawQuery(sql, this.properties).then((result) => result.insertId);
   }
 
   /**
@@ -538,10 +565,10 @@ class Adapter extends AbstractAdapter {
     const correctValues = filteredValues.values.concat(condition.args);
 
     const table = this.getTableName();
-    const sql = `UPDATE ${table} SET ${setValues}${condition.where}`;
+    const sql = `UPDATE ${this.getDatabaseString()}${table} SET ${setValues}${condition.where}`;
 
     Adapter.debug(sql, correctValues);
-    return this.rawQuery(sql, correctValues).then(result => result.changedRows > 0);
+    return this.rawQuery(sql, correctValues).then((result) => result.changedRows > 0);
   }
 
   /**
@@ -562,9 +589,9 @@ class Adapter extends AbstractAdapter {
     condition = this.conditionBuilder(condition);
     const table = this.getTableName();
 
-    const sql = `DELETE FROM ${table}${condition.where}`;
+    const sql = `DELETE FROM ${this.getDatabaseString()}${table}${condition.where}`;
     Adapter.debug(sql, condition.args);
-    return this.rawQuery(sql, condition.args).then(result => result.affectedRows > 0);
+    return this.rawQuery(sql, condition.args).then((result) => result.affectedRows > 0);
   }
 
   /**
@@ -579,7 +606,7 @@ class Adapter extends AbstractAdapter {
     conditions = this.conditionBuilder(conditions);
     fields = this.constructor.getSelectFields(fields);
 
-    const query = `SELECT ${fields} FROM ${entity}${conditions.where}`;
+    const query = `SELECT ${fields} FROM ${this.getDatabaseString()}${entity}${conditions.where}`;
     Adapter.debug(query, conditions.args);
     return this.rawQuery(query, conditions.args);
   }

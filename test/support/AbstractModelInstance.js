@@ -41,6 +41,38 @@ describe('AbstractModelInstance - MySQL', () => {
       const model = new Model({ a: 1, b: { c: 2 } });
       model.properties.should.be.deep.eql({ a: 1, b: { c: 2 } });
     });
+
+    it('should set correct context', () => {
+      const model = new Model({ a: 1, b: { c: 2 } }, { uuid: '1111' });
+      model.properties.should.be.deep.eql({ a: 1, b: { c: 2 } });
+      model.context.should.be.deep.eql({ uuid: '1111' });
+    });
+  });
+
+  describe('setContext', () => {
+    let model;
+
+    beforeEach(() => {
+      model = new Model({});
+    });
+
+    it('should set correct context', () => {
+      model.setContext({ uuid: '1111' });
+      model.context.should.be.deep.eql({ uuid: '1111' });
+    });
+  });
+
+  describe('getContext', () => {
+    let model;
+
+    beforeEach(() => {
+      model = new Model({});
+    });
+
+    it('should get correct context', () => {
+      model.context = { uuid: '1111' };
+      model.getContext().should.be.deep.eql({ uuid: '1111' });
+    });
   });
 
   describe('getTableName', () => {
@@ -235,8 +267,16 @@ describe('AbstractModelInstance - MySQL', () => {
     beforeEach(() => {
       mysql = new Model(sampleCondition);
       stub = sinon.stub(mysql, 'rawQuery');
+      stub.withArgs('DELETE FROM `custom_db`.`table1` WHERE `id` = ?', [123]).returns(Promise.resolve({ affectedRows: 5 }));
       stub.withArgs('DELETE FROM `table1` WHERE `id` = ?', [123]).returns(Promise.resolve({ affectedRows: 1 }));
       stub.withArgs('DELETE FROM `table2` WHERE `id` = ?', [123]).rejects(new Error('mysql delete error'));
+    });
+
+    it('rawQuery responds success (with database)', (done) => {
+      Model.TABLE = 'table1';
+      mysql.setDatabase('custom_db');
+      mysql.DELETE().should.eventually.equal(true).notify(done);
+      stub.should.have.callCount(1);
     });
 
     it('rawQuery responds success', (done) => {
@@ -280,12 +320,22 @@ describe('AbstractModelInstance - MySQL', () => {
     beforeEach(() => {
       mysql = new Model({});
       stub = sinon.stub(mysql, 'rawQuery');
+      stub.withArgs('SELECT * FROM `custom_db`.`table1`', []).returns(Promise.resolve([output[0]]));
       stub.withArgs('SELECT * FROM `table1`', []).returns(Promise.resolve(output));
       stub.withArgs('SELECT * FROM `table2` WHERE `a` = ? AND `b` = ?', [1, '2']).returns(Promise.resolve([output[1]]));
       stub.withArgs('SELECT `a`, `b` FROM `table3` WHERE `a` = ? AND `b` = ?', [1, '2']).returns(Promise.resolve([output[1]]));
       stub.withArgs('SELECT `a` FROM `table4` WHERE `a` = ? AND `b` = ? ORDER BY `a` ASC, `b` ASC', [1, '2']).returns(Promise.resolve([output[1]]));
       stub.withArgs('SELECT `a` FROM `table5` WHERE `a` = ? AND `b` = ? ORDER BY `a`', [1, '2']).returns(Promise.resolve([output[1]]));
       stub.withArgs('SELECT * FROM `table6` WHERE `a` = ? AND `b` = ?', [1, '2']).rejects(new Error('mysql select error'));
+    });
+
+    it('should select all rows of table for given database', (done) => {
+      Model.TABLE = 'table1';
+      mysql.setDatabase('custom_db');
+
+      mysql.SELECT()
+        .should.eventually.deep.equal([expectation[0]]).notify(done);
+      stub.should.have.callCount(1);
     });
 
     it('should select all rows of table', (done) => {
@@ -339,8 +389,20 @@ describe('AbstractModelInstance - MySQL', () => {
     beforeEach(() => {
       mysql = new Model({});
       stub = sinon.stub(mysql, 'rawQuery');
+      stub.withArgs('INSERT INTO `custom_db`.`table` SET ?', { a: 1 }).returns(Promise.resolve({ insertId: 2 }));
       stub.withArgs('INSERT INTO `table` SET ?', { a: 1, b: 2 }).returns(Promise.resolve({ insertId: 1 }));
       stub.withArgs('INSERT INTO `table2` SET ?', { a: 1, b: 2 }).throws(new Error('mysql insert error'));
+    });
+
+    it('rawQuery responds success (with database)', (done) => {
+      Model.TABLE = 'table';
+      mysql.setDatabase('custom_db');
+      mysql.set('a', 1);
+      mysql.INSERT().then((res) => {
+        res.should.be.eql(2);
+        stub.should.have.callCount(1);
+        done();
+      });
     });
 
     it('rawQuery responds success', (done) => {
@@ -380,9 +442,24 @@ describe('AbstractModelInstance - MySQL', () => {
     beforeEach(() => {
       mysql = new Model(sampleCondition);
       stub = sinon.stub(mysql, 'rawQuery');
+      stub.withArgs('UPDATE `custom_db`.`table1` SET `a` = ? WHERE `id` = ?', [2, '111']).returns(Promise.resolve({ changedRows: 2 }));
       stub.withArgs('UPDATE `table1` SET `a` = ? WHERE `id` = ?', [2, '111']).returns(Promise.resolve({ changedRows: 5 }));
       stub.withArgs('UPDATE `table2` SET `a` = ? WHERE `id` = ?', [3, '222']).returns(Promise.resolve({ changedRows: 0 }));
       stub.withArgs('UPDATE `table3` SET `a` = ? WHERE `id` = ?', [3, '222']).rejects(new Error('mysql update error'));
+    });
+
+    it('rawQuery responds success (with database)', (done) => {
+      Model.TABLE = 'table1';
+      mysql.setDatabase('custom_db');
+
+      const original = new Model({ id: '111', a: 1, b: '2' });
+      mysql.setOriginal(original);
+      mysql.set('a', 2);
+      mysql.UPDATE().then((res) => {
+        res.should.be.eql(true);
+        stub.should.have.callCount(1);
+        done();
+      });
     });
 
     it('rawQuery responds success', (done) => {

@@ -240,7 +240,7 @@ describe('link', () => {
           },
         });
         done();
-      }).catch(e => console.log(e));
+      }).catch((e) => console.log(e));
     });
 
     it('should query join table to fetch link details', (done) => {
