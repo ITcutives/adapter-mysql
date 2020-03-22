@@ -82,12 +82,6 @@ describe('AbstractModelInstance - MySQL', () => {
       model = new Model({});
     });
 
-    it('should have database + table if database is set in model', () => {
-      Model.DATABASE = 'database1';
-      Model.TABLE = 'table1';
-      model.getTableName().should.be.eql('`database1`.`table1`');
-    });
-
     it('should only return table if database is empty', () => {
       Model.DATABASE = '';
       Model.TABLE = 'table1';
@@ -698,6 +692,19 @@ describe('AbstractModelInstance - MySQL', () => {
       });
     });
 
+    it('should not do anything if link fields argument is undefined', async () => {
+      const result = await mysql.toLink(undefined, path.join(__dirname, '..'));
+      Related.prototype.SELECT.should.have.callCount(0);
+      mysql.FINDLINKS.should.have.callCount(0);
+      result.should.be.deep.eql({
+        id: 1,
+        name: 'test',
+        links: {
+          plans: 3,
+        },
+      });
+    });
+
     it('should not do anything if link fields argument is empty', (done) => {
       mysql.toLink([], path.join(__dirname, '..')).then((result) => {
         Related.prototype.SELECT.should.have.callCount(0);
@@ -762,16 +769,20 @@ describe('AbstractModelInstance - MySQL', () => {
     });
 
     it('should create class instance with correct fields populated from links object', (done) => {
-      Model.fromLink(Model, object).then((result) => {
-        result.should.be.deep.eql(new Model({ id: 1, name: 'test', plan_id: 3 }));
+      const expectation = new Model({ id: 1, name: 'test', plan_id: 3 });
+      expectation.setContext({ uuid: '1111' });
+      Model.fromLink(Model, { uuid: '1111' }, object).then((result) => {
+        result.should.be.deep.eql(expectation);
         done();
       });
     });
 
     it('should just create class instance without links populated if there is no links field', (done) => {
       Model.LINKS = [];
-      Model.fromLink(Model, object).then((result) => {
-        result.should.be.deep.eql(new Model({ id: 1, name: 'test' }));
+      const expectation = new Model({ id: 1, name: 'test' });
+      expectation.setContext({ uuid: '1111' });
+      Model.fromLink(Model, { uuid: '1111' }, object).then((result) => {
+        result.should.be.deep.eql(expectation);
         done();
       });
     });
