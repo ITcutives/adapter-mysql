@@ -6,7 +6,7 @@ const Boom = require('boom');
 const loForEach = require('lodash/forEach');
 const loClone = require('lodash/clone');
 const loIsEmpty = require('lodash/isEmpty');
-const loSet = require('lodash/set');
+const loGet = require('lodash/get');
 const loSplit = require('lodash/split');
 const loMap = require('lodash/map');
 const mysql = require('mysql');
@@ -57,18 +57,18 @@ class Adapter extends AbstractAdapter {
   constructor(entity, context) {
     super();
     // set everything to blank
-    this.setContext(context);
     this.setDatabase('');
+    this.setContext(context);
 
     // if entity object is provided
     if (entity) {
-      loForEach(entity, (v, k) => {
-        const cols = k.split('.');
-        const field = cols[0];
-        if (this.constructor.FIELDS.indexOf(field) !== -1) {
-          loSet(this.properties, k, v);
+      this.constructor.FIELDS.forEach((field) => {
+        const value = loGet(entity, field);
+        if (value !== undefined) {
+          this.set(field, value);
         }
       });
+      this.relationships = entity[Adapter.LINKELEMENT] || {};
     }
   }
 
@@ -98,6 +98,7 @@ class Adapter extends AbstractAdapter {
     loForEach(this.constructor.SERIALIZED, (v, k) => {
       let value = this.get(k);
       if (value) {
+        // eslint-disable-next-line default-case
         switch (v) {
           case 'json':
             if (typeof value !== 'string') {
@@ -115,6 +116,7 @@ class Adapter extends AbstractAdapter {
     loForEach(this.constructor.SERIALIZED, (v, k) => {
       let value = this.get(k);
       if (value) {
+        // eslint-disable-next-line default-case
         switch (v) {
           case 'json':
             if (typeof value === 'string') {
