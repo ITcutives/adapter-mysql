@@ -12,11 +12,13 @@ const loMap = require('lodash/map');
 const mysql = require('mysql');
 const AbstractAdapter = require('@itcutives/adapter-memory/src/abstract');
 
-const reflect = (promise) => promise.then((v) => ({ v, status: 'resolved' }),
-  (e) => ({ e, status: 'rejected' }));
+const reflect = (promise) => promise.then(
+  (v) => ({ v, status: 'resolved' }),
+  (e) => ({ e, status: 'rejected' }),
+);
 
+const loSet = require('lodash/set');
 const Link = require('./link');
-
 
 class Adapter extends AbstractAdapter {
   /**
@@ -106,7 +108,7 @@ class Adapter extends AbstractAdapter {
             }
             break;
         }
-        this.properties[k] = value;
+        loSet(this.properties, k, value);
       }
     });
     return this;
@@ -124,7 +126,7 @@ class Adapter extends AbstractAdapter {
             }
             break;
         }
-        this.properties[k] = value;
+        loSet(this.properties, k, value);
       }
     });
     return this;
@@ -547,7 +549,6 @@ class Adapter extends AbstractAdapter {
     }
 
     await this.serialise();
-
 
     condition = {
       id: this.original.get('id'),

@@ -1,6 +1,6 @@
 {
   "name": "@itcutives/adapter-mysql",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "MySQL Adapter for ITcutives API",
   "main": "index.js",
   "directories": {
@@ -42,7 +42,7 @@
   "dependencies": {
     "@itcutives/adapter-memory": "^1.3.1",
     "boom": "^7.3.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "mysql": "^2.18.1"
   }
 }
